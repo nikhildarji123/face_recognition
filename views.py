@@ -82,25 +82,33 @@ def login(request):
             face_image_data = face_image_data.split(",")[1]  # Extract base64 data
             face_image = base64.b64decode(face_image_data)
 
-            # Save the uploaded face temporarily for recognition
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as user_face:
-                user_face.write(face_image)
-                temp_image_path = user_face.name
-                print(f"Temporary image path: {temp_image_path}")
+            # Save the uploaded face temporarily for recognition in a predefined directory
+            user_faces_dir = 'C:\\Users\\Nikhil Darji\\Documents\\Nikhil Darji\\flogin\\user_faces\\'
+            if not os.path.exists(user_faces_dir):
+                os.makedirs(user_faces_dir)
+
+            # Generate a unique filename for the uploaded face image
+            user_face_path = os.path.join(user_faces_dir, 'temp_user_face.jpg')
+
+            # Save the image temporarily
+            with open(user_face_path, 'wb') as user_face_file:
+                user_face_file.write(face_image)
+
+            print(f"Temporary image path: {user_face_path}")
 
             # Ensure that the file exists and points to a valid path
-            if not os.path.exists(temp_image_path):
+            if not os.path.exists(user_face_path):
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Temporary file could not be created.'
                 })
 
             # Load the captured face for encoding
-            captured_face = face_recognition.load_image_file(temp_image_path)
+            captured_face = face_recognition.load_image_file(user_face_path)
             captured_encoding = face_recognition.face_encodings(captured_face)
 
-            # Delete the temporary file
-            os.remove(temp_image_path)
+            # Delete the temporary file after encoding
+            os.remove(user_face_path)
 
             if len(captured_encoding) == 0:
                 return JsonResponse({
@@ -114,6 +122,9 @@ def login(request):
             users = UserImages.objects.all()
             for user in users:
                 stored_face_path = user.face_image.path
+                if not os.path.exists(stored_face_path):
+                    continue  # Skip invalid paths or missing files
+
                 stored_face = face_recognition.load_image_file(stored_face_path)
                 stored_encoding = face_recognition.face_encodings(stored_face)
 
