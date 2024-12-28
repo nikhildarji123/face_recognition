@@ -1,2 +1,2 @@
 # face_recognition
-with python using framework django 
+Python using framework django 
