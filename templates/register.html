@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Login & Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            width: 100%;
+        }
+
+        .camera-container {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        video {
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+        }
+
+        canvas {
+            display: none;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .capture-button {
+            background-color: #28a745;
+        }
+
+        .capture-button:hover {
+            background-color: #218838;
+        }
+
+        .login-button {
+            background-color: #007BFF;
+        }
+
+        .login-button:hover {
+            background-color: #0056b3;
+        }
+
+        .register-button {
+            background-color: #FFC107;
+        }
+
+        .register-button:hover {
+            background-color: #e0a800;
+        }
+
+        #message {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        #message.success {
+            color: #28a745;
+        }
+
+        #message.error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Face Login & Register</h2>
+        <form id="register-form" action="/register/" method="POST" enctype="multipart/form-data">
+            <input type="text" id="username" placeholder="Username" required>
+            <div class="camera-container">
+                <video id="video" autoplay></video>
+                <canvas id="canvas" width="300" height="200"></canvas>
+                <button type="button" id="capture-button" class="capture-button">Capture Face</button>
+            </div>
+            <div class="button-container">
+                <button type="button" id="login-button" class="login-button">Login</button>
+                <button type="button" id="register-button" class="register-button">Register</button>
+            </div>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureButton = document.getElementById('capture-button');
+        const loginButton = document.getElementById('login-button');
+        const registerButton = document.getElementById('register-button');
+        const messageDiv = document.getElementById('message');
+
+        let capturedImage = null;
+
+        // Access the user's camera
+        async function initializeCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Error accessing your camera:", err);
+                messageDiv.className = 'error';
+                messageDiv.innerText = "Camera not accessible.";
+            }
+        }
+
+        // Initialize camera on page load
+        initializeCamera();
+
+        // Capture face image
+        captureButton.addEventListener('click', () => {
+            if (!video.srcObject) {
+                messageDiv.className = 'error';
+                messageDiv.innerText = "Please allow access to your camera.";
+                return;
+            }
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImage = canvas.toDataURL('image/png');
+            messageDiv.className = 'success';
+            messageDiv.innerText = "Face captured successfully.";
+        });
+
+        // Helper function to send data to the server
+        // Register form submission
+        document.getElementById('register-button').addEventListener('click', async (e) => {
+            e.preventDefault(); // Prevent default form submission
+
+            const username = document.getElementById('username').value;
+            if (!username || !capturedImage) {
+                messageDiv.className = 'error';
+                messageDiv.innerText = "Username or face image is missing.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('face_image', capturedImage);
+
+            try {
+                const response = await fetch('/register/', { // Make sure the URL ends with a single slash
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    messageDiv.className = 'success';
+                    messageDiv.innerText = data.message;
+                } else {
+                    messageDiv.className = 'error';
+                    messageDiv.innerText = data.message;
+                }
+            } catch (error) {
+                console.error("Error during registration:", error);
+                messageDiv.className = 'error';
+                messageDiv.innerText = "An error occurred. Please try again.";
+            }
+        });
+
+        // Register action
+        registerButton.addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            if (!username) {
+                messageDiv.className = 'error';
+                messageDiv.innerText = "Username is required.";
+                return;
+            }
+            if (!capturedImage) {
+                messageDiv.className = 'error';
+                messageDiv.innerText = "Please capture a face first.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('face_image', capturedImage);
+
+            const result = await sendData('/register', formData);
+            if (result.success) {
+                messageDiv.className = 'success';
+                messageDiv.innerText = "Registration successful.";
+            } else {
+                messageDiv.className = 'error';
+                messageDiv.innerText = result.message || "Registration failed.";
+            }
+        });
+
+        // Login action
+        loginButton.addEventListener('click', async () => {
+            if (!capturedImage) {
+                messageDiv.className = 'error';
+                messageDiv.innerText = "Please capture a face first.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('face_image', capturedImage);
+
+            try {
+                const response = await fetch('/login/', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    messageDiv.className = 'success';
+                    messageDiv.innerText = "Login successful.";
+                    // Optionally, redirect to a dashboard or home page
+                    // window.location.href = '/dashboard/';
+                } else {
+                    messageDiv.className = 'error';
+                    messageDiv.innerText = result.message || "Login failed.";
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                messageDiv.className = 'error';
+                messageDiv.innerText = "An error occurred. Please try again.";
+            }
+        });
+
+    </script>
+</body>
+</html>
